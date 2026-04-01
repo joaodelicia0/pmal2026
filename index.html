@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Estudos - PMAL 2026</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chosen Palette: Slate (Neutrals) with Blue/Teal (Military/Focus) accents -->
+    <!-- Application Structure Plan: The SPA uses a dashboard structure. It starts with a macro view (Time Distribution Chart) to show work/study/life balance. Then, it transitions into a micro view (Interactive Daily Timeline) allowing the user to click through days to see specific tasks. Finally, it provides thematic cards for Study Strategy and TAF (Physical Prep) goals. This structure was chosen because it moves from general understanding to actionable daily steps, keeping the user focused and organized without being overwhelmed. -->
+    <!-- Visualization & Content Choices: 
+         1. Time Allocation -> Goal: Inform -> Doughnut Chart -> Hover tooltips -> Shows the reality of the routine (sleep vs study) -> Chart.js. 
+         2. Weekly Schedule -> Goal: Organize/Schedule -> Interactive Tabbed Timeline -> Click day to filter -> Makes a dense table readable -> HTML/JS. 
+         3. Subject Strategy -> Goal: Inform/Organize -> Grid Cards -> Hover states -> Quick reference for what to study during "Estudo 1/2" -> HTML/CSS.
+         4. NO SVG/Mermaid used.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Slate 50 */
+            color: #334155; /* Slate 700 */
+        }
+        
+        /* Required Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Custom Scrollbar for Timeline */
+        .timeline-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .timeline-scroll::-webkit-scrollbar-track {
+            background: #e2e8f0; 
+            border-radius: 4px;
+        }
+        .timeline-scroll::-webkit-scrollbar-thumb {
+            background: #94a3b8; 
+            border-radius: 4px;
+        }
+        .timeline-scroll::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
+        }
+
+        /* Simple Animations */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .menu-simples {
+    margin: 20px;
+}
+
+.menu-simples a {
+    display: inline-block;
+    margin: 10px 0;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: #ccc;
+    background-color: #1f1f1f;
+    border-radius: 8px;
+    transition: 0.3s;
+    font-family: Arial, sans-serif;
+}
+
+.menu-simples a:hover {
+    color: #fff;
+    background-color: #333;
+    transform: scale(1.05);
+}
+    </style>
+</head>
+<body class="antialiased selection:bg-blue-200 selection:text-blue-900">
+   
+    <!-- Header Navigation -->
+    <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl">🦅</span>
+                <h1 class="text-xl font-bold tracking-wide">Projeto PMAL 2026</h1>
+            </div>
+            <div class="hidden md:flex space-x-6 text-sm font-medium text-slate-300">
+                <a href="#visao-geral" class="hover:text-white transition">Visão Geral</a>
+                <a href="#cronograma" class="hover:text-white transition">Cronograma</a>
+                <a href="#estrategia" class="hover:text-white transition">Estratégia</a>
+            </div>
+            <button class="md:hidden text-2xl" onclick="alert('Navegação: Role a página para ver os detalhes da rotina.')">☰</button>
+        </div>
+    </nav>
+        <nav class="menu-simples">
+            <a href="index2.html">Dashboard</a><br>
+            <a href="index3.html">Cronograma Diario</a>
+        </nav>
+
+    <!-- Main Content Container -->
+    <main class="max-w-6xl mx-auto px-4 py-8 space-y-12">
+
+        <!-- Section 1: Visão Geral -->
+        <section id="visao-geral" class="space-y-6 scroll-mt-20">
+            <div class="text-center max-w-2xl mx-auto space-y-2">
+                <h2 class="text-3xl font-bold text-slate-800">Visão Geral da Rotina</h2>
+                <p class="text-slate-500">
+                    Este painel traduz sua rotina otimizada em dados visuais. O gráfico abaixo ilustra como suas 168 horas semanais estão distribuídas entre descanso, estudos focados, atividades fixas (IFAL/IFMAKER) e preparação física (TAF). O objetivo é garantir que você mantenha o equilíbrio necessário para a aprovação.
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-around">
+                <div class="w-full md:w-1/2 p-4">
+                    <div class="chart-container">
+                        <canvas id="timeChart"></canvas>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/2 p-4 space-y-4">
+                    <h3 class="text-xl font-semibold border-b pb-2">Distribuição Semanal (Aproximada)</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-center justify-between">
+                            <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-800"></span> Sono / Descanso</span>
+                            <span class="font-bold">42h (25%)</span>
+                        </li>
+                        <li class="flex items-center justify-between">
+                            <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-600"></span> IFAL & IFMAKER</span>
+                            <span class="font-bold">46h (27%)</span>
+                        </li>
+                        <li class="flex items-center justify-between">
+                            <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Estudos P/ Concurso</span>
+                            <span class="font-bold">28h (17%)</span>
+                        </li>
+                        <li class="flex items-center justify-between">
+                            <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> TAF (Praça + Academia)</span>
+                            <span class="font-bold">15h (9%)</span>
+                        </li>
+                        <li class="flex items-center justify-between">
+                            <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-300"></span> Deslocamento / Livre</span>
+                            <span class="font-bold">37h (22%)</span>
+                        </li>
+                    </ul>
+                    <div class="p-3 bg-blue-50 text-blue-800 rounded-lg text-xs font-medium border border-blue-100">
+                        💡 <strong>Nota:</strong> Você garantiu 6 horas exatas de sono diário (22:40 às 04:40). Isso é vital para a consolidação da memória após o "Estudo 2" noturno.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Cronograma Interativo -->
+        <section id="cronograma" class="space-y-6 scroll-mt-20">
+            <div class="max-w-2xl space-y-2">
+                <h2 class="text-3xl font-bold text-slate-800">Cronograma Diário Interativo</h2>
+                <p class="text-slate-500">
+                    Selecione um dia da semana para visualizar sua linha do tempo detalhada. Este módulo substitui a planilha estática, permitindo que você foque apenas nas tarefas do dia atual, reduzindo a ansiedade visual.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <!-- Day Selectors -->
+                <div class="flex overflow-x-auto bg-slate-100 border-b border-slate-200 p-2 gap-2" id="day-tabs">
+                    <!-- Buttons generated by JS -->
+                </div>
+
+                <!-- Timeline Content -->
+                <div class="p-6 md:p-8 timeline-scroll h-[500px] overflow-y-auto" id="timeline-content">
+                    <!-- Timeline items generated by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Estratégia de Disciplinas e TAF -->
+        <section id="estrategia" class="space-y-6 scroll-mt-20">
+            <div class="max-w-2xl space-y-2">
+                <h2 class="text-3xl font-bold text-slate-800">Estratégia e Metas do Edital</h2>
+                <p class="text-slate-500">
+                    Aqui detalhamos o que você deve fazer em cada bloco genérico do cronograma (como "Estudo 1" ou "Academia"). Estas diretrizes alinham seu esforço diário com as exigências específicas da prova e do Teste de Aptidão Física (TAF) da PMAL.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Bloco Estudo Teórico -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-3xl">📚</span>
+                        <h3 class="text-xl font-bold">Distribuição das Matérias</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-4">Foco para o <strong>Estudo 1 (07:00 - 08:00)</strong>:</p>
+                    <ul class="space-y-3 text-sm">
+                        <li class="p-2 bg-slate-50 rounded border border-slate-100">
+                            <strong class="text-blue-700">Seg & Qua:</strong> Matemática e Raciocínio Lógico.
+                        </li>
+                        <li class="p-2 bg-slate-50 rounded border border-slate-100">
+                            <strong class="text-blue-700">Ter & Qui:</strong> Direito Penal e Processo Penal.
+                        </li>
+                        <li class="p-2 bg-slate-50 rounded border border-slate-100">
+                            <strong class="text-blue-700">Sexta:</strong> Legislação PMAL.
+                        </li>
+                    </ul>
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <p class="text-sm text-slate-600"><strong>Estudo 2 (21:40):</strong> Reservado exclusivamente para revisão e resolução de questões da matéria vista de manhã.</p>
+                    </div>
+                </div>
+
+                <!-- Bloco Preparação TAF -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-300 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-3xl">🏃‍♂️</span>
+                        <h3 class="text-xl font-bold">Metas do TAF (Diário)</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-4">Sua preparação física foi dividida estrategicamente:</p>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <strong>Corrida (Praça 05:00)</strong>
+                                <span class="text-emerald-600 text-xs font-bold">Meta: 2.000m / 11 min</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                <div class="bg-emerald-500 h-2 rounded-full" style="width: 70%"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">Treine o ritmo e adicione o Shuttle Run (ir e vir) 2x na semana.</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <strong>Força (Academia 19:20)</strong>
+                                <span class="text-emerald-600 text-xs font-bold">Meta: 4 Barras / 40 Abs</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                <div class="bg-emerald-500 h-2 rounded-full" style="width: 50%"></div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">Foco primário em membros superiores e core abdominal.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloco Tempo Morto -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 md:col-span-2 hover:border-amber-300 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-3xl">🚌</span>
+                        <h3 class="text-xl font-bold">Aproveitamento de Tempo (Van/Ônibus)</h3>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-2">Você possui janelas valiosas às 06:20 (Ônibus Diário) e às 10:30 (Van nas Segundas). Como utilizar sem fadiga mental extrema:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                        <div class="p-3 bg-amber-50 rounded-lg border border-amber-100 text-center">
+                            <span class="text-2xl block mb-2">🗂️</span>
+                            <strong class="block text-sm text-amber-900">Flashcards (Anki)</strong>
+                            <span class="text-xs text-amber-700">Revisão espaçada rápida.</span>
+                        </div>
+                        <div class="p-3 bg-amber-50 rounded-lg border border-amber-100 text-center">
+                            <span class="text-2xl block mb-2">⚖️</span>
+                            <strong class="block text-sm text-amber-900">Lei Seca</strong>
+                            <span class="text-xs text-amber-700">Leitura da CF ou Estatuto.</span>
+                        </div>
+                        <div class="p-3 bg-amber-50 rounded-lg border border-amber-100 text-center">
+                            <span class="text-2xl block mb-2">🎧</span>
+                            <strong class="block text-sm text-amber-900">Podcasts</strong>
+                            <span class="text-xs text-amber-700">Atualidades para a Redação.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-8 text-center text-sm mt-12">
+        <p>Desenvolvido com base no planejamento otimizado para o edital PMAL 2026.</p>
+        <p class="mt-2">Consistência é a chave da aprovação.</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- DATA STRUCTURE ---
+        const scheduleData = {
+            segunda: [
+                { time: "04:40", title: "Acordar", desc: "Início do dia.", type: "sleep", icon: "⏰" },
+                { time: "05:00", title: "Corrida Praça", desc: "Treino aeróbico (Foco: 2.000m)", type: "taf", icon: "🏃‍♂️" },
+                { time: "06:00", title: "Banho/Café", desc: "Higiene e nutrição.", type: "break", icon: "☕" },
+                { time: "06:20", title: "Ônibus (Livre)", desc: "Deslocamento. Opcional: Anki rápido.", type: "transit", icon: "🚌" },
+                { time: "07:00", title: "Estudo 1", desc: "Matemática e Raciocínio Lógico (Teoria).", type: "study", icon: "📚" },
+                { time: "08:00", title: "Curso Inglês", desc: "Aula regular.", type: "study", icon: "🗣️" },
+                { time: "10:30", title: "Estudo Van", desc: "Revisão leve (Leitura/Podcasts).", type: "study", icon: "📱" },
+                { time: "12:00", title: "IFAL", desc: "Aulas regulares.", type: "school", icon: "🏫" },
+                { time: "18:20", title: "Deslocamento", desc: "Retorno para casa.", type: "transit", icon: "🚶" },
+                { time: "19:20", title: "Academia", desc: "Treino de força (Foco: Barra/Abs).", type: "taf", icon: "🏋️" },
+                { time: "21:00", title: "Banho/Jantar", desc: "Recuperação.", type: "break", icon: "🍽️" },
+                { time: "21:40", title: "Estudo 2", desc: "Resolução de Questões (Matemática).", type: "study", icon: "📝" },
+                { time: "22:40", title: "Sono", desc: "Descanso obrigatório (6 horas).", type: "sleep", icon: "😴" }
+            ],
+            terca_a_quinta: [
+                { time: "04:40", title: "Acordar", desc: "Início do dia.", type: "sleep", icon: "⏰" },
+                { time: "05:00", title: "Corrida Praça", desc: "Treino aeróbico.", type: "taf", icon: "🏃‍♂️" },
+                { time: "06:00", title: "Banho/Café", desc: "Higiene e nutrição.", type: "break", icon: "☕" },
+                { time: "06:20", title: "Ônibus (Livre)", desc: "Deslocamento.", type: "transit", icon: "🚌" },
+                { time: "07:00", title: "Estudo 1", desc: "Ter/Qui: Dir. Penal. Qua: PMAL.", type: "study", icon: "📚" },
+                { time: "08:00", title: "IFMAKER", desc: "Monitoria.", type: "school", icon: "💻" },
+                { time: "12:00", title: "IFAL", desc: "Aulas regulares.", type: "school", icon: "🏫" },
+                { time: "18:20", title: "Deslocamento", desc: "Retorno para casa.", type: "transit", icon: "🚶" },
+                { time: "19:20", title: "Academia", desc: "Treino de força.", type: "taf", icon: "🏋️" },
+                { time: "21:00", title: "Banho/Jantar", desc: "Recuperação.", type: "break", icon: "🍽️" },
+                { time: "21:40", title: "Estudo 2", desc: "Questões da matéria da manhã.", type: "study", icon: "📝" },
+                { time: "22:40", title: "Sono", desc: "Descanso obrigatório.", type: "sleep", icon: "😴" }
+            ],
+            sexta: [
+                { time: "04:40", title: "Acordar", desc: "Início do dia.", type: "sleep", icon: "⏰" },
+                { time: "05:00", title: "Corrida Praça", desc: "Treino aeróbico.", type: "taf", icon: "🏃‍♂️" },
+                { time: "06:00", title: "Banho/Café", desc: "Higiene e nutrição.", type: "break", icon: "☕" },
+                { time: "06:20", title: "Ônibus (Livre)", desc: "Deslocamento.", type: "transit", icon: "🚌" },
+                { time: "07:00", title: "Estudo 1", desc: "Legislação PMAL.", type: "study", icon: "📚" },
+                { time: "08:00", title: "IFMAKER", desc: "Monitoria.", type: "school", icon: "💻" },
+                { time: "12:00", title: "IFAL", desc: "Aulas regulares.", type: "school", icon: "🏫" },
+                { time: "18:20", title: "Deslocamento", desc: "Retorno.", type: "transit", icon: "🚶" },
+                { time: "19:20", title: "Academia", desc: "Treino de força.", type: "taf", icon: "🏋️" },
+                { time: "21:00", title: "Banho/Jantar", desc: "Recuperação.", type: "break", icon: "🍽️" },
+                { time: "21:40", title: "Estudo 2", desc: "Questões Legislação PMAL.", type: "study", icon: "📝" },
+                { time: "22:40", title: "Sono", desc: "Descanso.", type: "sleep", icon: "😴" }
+            ],
+            sabado: [
+                { time: "04:40", title: "Dormindo", desc: "Recuperação do sono.", type: "sleep", icon: "😴" },
+                { time: "06:00", title: "Acordar/Café", desc: "Início do dia sem pressa.", type: "break", icon: "☕" },
+                { time: "07:00", title: "Estudo 1", desc: "Revisão Geral Anki.", type: "study", icon: "🔄" },
+                { time: "08:00", title: "Estudo 2", desc: "Matérias atrasadas ou dificuldade.", type: "study", icon: "📚" },
+                { time: "10:30", title: "Estudo 3", desc: "Bateria de Questões (Geral).", type: "study", icon: "📝" },
+                { time: "12:00", title: "Almoço", desc: "Refeição.", type: "break", icon: "🍽️" },
+                { time: "18:20", title: "Livre", desc: "Descanso mental.", type: "transit", icon: "🎮" },
+                { time: "19:20", title: "Academia", desc: "Treino de manutenção.", type: "taf", icon: "🏋️" },
+                { time: "22:40", title: "Sono", desc: "Dormir.", type: "sleep", icon: "😴" }
+            ],
+            domingo: [
+                { time: "06:00", title: "Acordar/Café", desc: "Preparação para simulado.", type: "break", icon: "☕" },
+                { time: "07:00", title: "Estudo 1", desc: "Revisão pré-simulado.", type: "study", icon: "📖" },
+                { time: "08:00", title: "Simulado", desc: "Prova Completa estilo Cebraspe.", type: "study", icon: "⏱️" },
+                { time: "12:00", title: "Almoço", desc: "Descanso pós-prova.", type: "break", icon: "🍽️" },
+                { time: "14:00", title: "Redação", desc: "Prática de Atualidades.", type: "study", icon: "✍️" },
+                { time: "16:00", title: "Correção Simulado", desc: "Verificar erros e acertos.", type: "study", icon: "✅" },
+                { time: "18:00", title: "Livre", desc: "Recuperação para a semana.", type: "transit", icon: "🎮" },
+                { time: "22:40", title: "Sono", desc: "Dormir.", type: "sleep", icon: "😴" }
+            ]
+        };
+
+        const days = [
+            { id: 'segunda', label: 'Segunda', dataKey: 'segunda' },
+            { id: 'terca', label: 'Terça', dataKey: 'terca_a_quinta' },
+            { id: 'quarta', label: 'Quarta', dataKey: 'terca_a_quinta' },
+            { id: 'quinta', label: 'Quinta', dataKey: 'terca_a_quinta' },
+            { id: 'sexta', label: 'Sexta', dataKey: 'sexta' },
+            { id: 'sabado', label: 'Sábado', dataKey: 'sabado' },
+            { id: 'domingo', label: 'Domingo', dataKey: 'domingo' }
+        ];
+
+        // Color mapping for timeline items
+        const typeColors = {
+            sleep: "bg-slate-100 text-slate-500 border-slate-200",
+            taf: "bg-emerald-50 text-emerald-800 border-emerald-200",
+            break: "bg-amber-50 text-amber-800 border-amber-200",
+            transit: "bg-gray-50 text-gray-600 border-gray-200",
+            study: "bg-blue-50 text-blue-800 border-blue-200 shadow-sm",
+            school: "bg-indigo-50 text-indigo-800 border-indigo-200"
+        };
+
+        // --- UI INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            renderTabs();
+            // Default select today or Monday
+            const today = new Date().getDay(); // 0 is Sunday, 1 is Monday
+            const defaultDayId = today >= 1 && today <= 6 ? days[today-1].id : 'domingo';
+            selectDay(defaultDayId);
+        });
+
+        // --- INTERACTION LOGIC ---
+        function renderTabs() {
+            const tabsContainer = document.getElementById('day-tabs');
+            tabsContainer.innerHTML = '';
+            
+            days.forEach(day => {
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap border day-btn`;
+                btn.id = `btn-${day.id}`;
+                btn.innerText = day.label;
+                btn.onclick = () => selectDay(day.id);
+                tabsContainer.appendChild(btn);
+            });
+        }
+
+        function selectDay(selectedId) {
+            // Update Buttons
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                if (btn.id === `btn-${selectedId}`) {
+                    btn.classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+                    btn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200', 'hover:bg-slate-50');
+                } else {
+                    btn.classList.remove('bg-slate-800', 'text-white', 'border-slate-800');
+                    btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200', 'hover:bg-slate-50');
+                }
+            });
+
+            // Update Timeline Content
+            const dayObj = days.find(d => d.id === selectedId);
+            const timelineData = scheduleData[dayObj.dataKey];
+            renderTimeline(timelineData);
+        }
+
+        function renderTimeline(data) {
+            const container = document.getElementById('timeline-content');
+            container.innerHTML = ''; // Clear current
+            
+            // Add a vertical line connecting items
+            const wrapper = document.createElement('div');
+            wrapper.className = "relative border-l-2 border-slate-200 ml-3 md:ml-4 fade-in";
+            
+            data.forEach((item, index) => {
+                const colorClasses = typeColors[item.type] || typeColors.break;
+                
+                const itemHtml = `
+                    <div class="mb-6 ml-6 relative">
+                        <!-- Timeline Dot -->
+                        <span class="absolute flex items-center justify-center w-8 h-8 rounded-full -left-10 ring-4 ring-white bg-white border border-slate-300 text-sm shadow-sm">
+                            ${item.icon}
+                        </span>
+                        
+                        <!-- Content Card -->
+                        <div class="p-4 rounded-xl border ${colorClasses} hover:shadow-md transition-shadow">
+                            <div class="flex items-center justify-between mb-1">
+                                <h4 class="font-bold text-base md:text-lg">${item.title}</h4>
+                                <span class="px-2 py-1 rounded bg-white bg-opacity-50 text-xs font-bold font-mono border border-opacity-20 border-black">
+                                    ${item.time}
+                                </span>
+                            </div>
+                            <p class="text-sm opacity-90">${item.desc}</p>
+                        </div>
+                    </div>
+                `;
+                wrapper.innerHTML += itemHtml;
+            });
+            
+            container.appendChild(wrapper);
+        }
+
+        // --- CHART LOGIC ---
+        function initChart() {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sono/Descanso', 'IFAL & IFMAKER', 'Estudos Concurso', 'TAF', 'Livre/Deslocamento'],
+                    datasets: [{
+                        data: [42, 46, 28, 15, 37],
+                        backgroundColor: [
+                            '#1e293b', // slate-800
+                            '#2563eb', // blue-600
+                            '#f59e0b', // amber-500
+                            '#10b981', // emerald-500
+                            '#cbd5e1'  // slate-300
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            display: false // Using custom legend in HTML
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ' horas semanais';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

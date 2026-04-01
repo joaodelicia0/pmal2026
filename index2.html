@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PMAL 2026 - Hub de Aprovação</title>
+    
+    <!-- Scripts Externos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .tab-active { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: 800; }
+        .card-active-day { background-color: #1e293b !important; color: white !important; transform: scale(0.98); }
+        .task-done { opacity: 0.5; text-decoration: line-through; filter: grayscale(1); }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        
+        /* Custom Checkbox */
+        .checkbox-custom {
+            width: 1.5rem; height: 1.5rem;
+            border: 2px solid #cbd5e1; border-radius: 0.5rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; cursor: pointer;
+        }
+        .checkbox-custom.checked { background-color: #2563eb; border-color: #2563eb; }
+        .checkbox-custom.checked::after { content: '✓'; color: white; font-weight: bold; font-size: 0.8rem; }
+        .menu-simples {
+    margin: 20px;
+}
+
+.menu-simples a {
+    display: inline-block;
+    margin: 10px 0;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: #ccc;
+    background-color: #1f1f1f;
+    border-radius: 8px;
+    transition: 0.3s;
+    font-family: Arial, sans-serif;
+}
+
+.menu-simples a:hover {
+    color: #fff;
+    background-color: #333;
+    transform: scale(1.05);
+}
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- Navegação Superior -->
+    <nav class="bg-slate-900 text-white sticky top-0 z-[100] shadow-xl">
+        <div class="max-w-4xl mx-auto flex justify-around">
+            <button onclick="showTab('geral')" id="tab-geral" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest tab-active">Visão Geral</button>
+            <button onclick="showTab('estudo')" id="tab-estudo" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Plano de Estudos</button>
+        </div>
+    </nav>
+    <nav class="menu-simples">
+        <a href="index.html">Página Principal</a><br>
+        <a href="index3.html">Cronograma Diario</a>
+    </nav>
+
+    <!-- ABA 1: VISÃO GERAL (Macro) -->
+    <div id="section-geral" class="main-section">
+        <header class="bg-white border-b border-slate-200 p-4">
+            <div class="max-w-4xl mx-auto flex justify-between items-center">
+                <div>
+                    <h1 class="font-black text-lg tracking-tighter uppercase">Dashboard PMAL</h1>
+                    <p class="text-[9px] text-blue-600 font-black uppercase tracking-[0.2em]">Foco: Soldado Combatente</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-right">
+                        <span id="gen-pct" class="text-slate-900 font-black text-sm">0%</span>
+                    </div>
+                    <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div id="gen-bar" class="h-full bg-blue-600 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        
+
+        <main class="max-w-4xl mx-auto p-4 space-y-4">
+            <!-- Distribuição de Tempo -->
+            <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-200">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Equilíbrio Semanal</h3>
+                <div class="chart-container">
+                    <canvas id="timeChart"></canvas>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                        <div class="w-2 h-2 rounded-full bg-slate-800"></div>
+                        <span class="text-[10px] font-bold">Sono: 42h</span>
+                    </div>
+                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                        <div class="w-2 h-2 rounded-full bg-blue-600"></div>
+                        <span class="text-[10px] font-bold">Estudo: 25h</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seletor de Dias -->
+            <div class="flex overflow-x-auto gap-2 no-scrollbar py-2" id="day-selector-geral"></div>
+            
+            <!-- Timeline de Rotina -->
+            <div id="timeline-geral" class="space-y-2"></div>
+        </main>
+    </div>
+
+    <!-- ABA 2: PLANO DE ESTUDOS (Micro/Edital) -->
+    <div id="section-estudo" class="main-section hidden">
+        <header class="bg-white border-b border-slate-200 p-4">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-lg font-black uppercase tracking-tight text-center">Foco no Edital</h2>
+                <div class="flex justify-center gap-2 mt-2">
+                    <span class="text-[8px] bg-red-100 text-red-600 px-2 py-1 rounded-full font-black uppercase">Prioridade: Humanas</span>
+                    <span class="text-[8px] bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-black uppercase">Matemática: Manutenção</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-4xl mx-auto p-4 space-y-4">
+            <!-- Gráfico de Esforço -->
+            <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-200">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Meta de Desempenho</h3>
+                <div class="h-32">
+                    <canvas id="priorityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tópicos do Dia -->
+            <div id="study-topics" class="space-y-4">
+                <!-- Conteúdo Dinâmico -->
+            </div>
+
+            <!-- Botão Reset -->
+            <button onclick="resetProgress()" class="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] border-2 border-dashed border-slate-200 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all">
+                Reiniciar Progresso do Dia
+            </button>
+        </main>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO DE DADOS ---
+        const subjects = {
+            port: { name: "Português", icon: "📚", color: "blue", level: "Dificuldade: ALTA", weight: 10 },
+            red: { name: "Redação", icon: "✍️", color: "rose", level: "Dificuldade: ALTA", weight: 8 },
+            mat: { name: "Matemática", icon: "📐", color: "amber", level: "Dificuldade: BAIXA (Seu forte)", weight: 5 },
+            penal: { name: "D. Penal / Proc. Penal", icon: "⚖️", color: "purple", level: "Dificuldade: MÉDIA", weight: 7 },
+            leg: { name: "Legislação PMAL", icon: "🛡️", color: "emerald", level: "Dificuldade: MÉDIA", weight: 9 },
+            adm: { name: "D. Administrativo/Const.", icon: "🏛️", color: "indigo", level: "Dificuldade: MÉDIA", weight: 7 }
+        };
+
+        const weeklyPlan = {
+            seg: { main: subjects.port, secondary: subjects.mat, topics: ["Compreensão de Textos", "Tipologia Textual", "Conjuntos Numéricos"] },
+            ter: { main: subjects.penal, secondary: subjects.adm, topics: ["Princípios Penais", "Aplicação da Lei", "Direitos Individuais"] },
+            qua: { main: subjects.port, secondary: subjects.mat, topics: ["Ortografia Oficial", "Acentuação", "Funções 1º Grau"] },
+            qui: { main: subjects.leg, secondary: subjects.penal, topics: ["Estatuto PMAL (Lei 5.346)", "Inquérito Policial"] },
+            sex: { main: subjects.red, secondary: subjects.adm, topics: ["Estrutura de Redação CESPE", "Coesão Textual", "Poderes Adm."] },
+            sab: { main: {name: "Simulado", icon: "⏱️", color: "slate"}, topics: ["Questões Anteriores", "Revisão de Erros"] },
+            dom: { main: {name: "Redação", icon: "🧘"}, topics: ["Prática de Escrita", "Leitura de Atualidades"] }
+        };
+
+        const getTasksForDay = (dayId) => {
+            const plan = weeklyPlan[dayId];
+            return [
+                { t: "04:40", task: "Despertar / Oração", cat: "ROTINA", icon: "🌅" },
+                { t: "05:00", task: "TAF: Corrida + Flexão", cat: "FÍSICO", icon: "🏃" },
+                { t: "07:00", task: `Estudo: ${plan.main.name}`, cat: "TEORIA", icon: plan.main.icon },
+                { t: "08:30", task: "Inglês / Maker (IFAL)", cat: "CURSOS", icon: "💻" },
+                { t: "10:30", task: "Van: Revisão Anki", cat: "ESTUDO", icon: "🚌" },
+                { t: "12:00", task: "Aulas IFAL", cat: "ESCOLA", icon: "🏫" },
+                { t: "19:20", task: "Academia", cat: "FÍSICO", icon: "🏋️" },
+                { t: "21:40", task: `Questões: ${plan.secondary?.name || 'Revisão'}`, cat: "QUESTÕES", icon: plan.secondary?.icon || "📝" }
+            ];
+        };
+
+        let currentDay = 'seg';
+        let progress = JSON.parse(localStorage.getItem('pmal_v4_progress')) || {};
+
+        // --- FUNÇÕES DE NAVEGAÇÃO ---
+        function showTab(tab) {
+            document.querySelectorAll('.main-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+            document.querySelectorAll('nav button').forEach(b => b.classList.replace('tab-active', 'text-slate-400'));
+            document.getElementById(`tab-${tab}`).classList.replace('text-slate-400', 'tab-active');
+            
+            if(tab === 'geral') {
+                initTimeChart();
+            } else {
+                initPriorityChart();
+            }
+            updateUI();
+        }
+
+        // --- RENDERIZAÇÃO DA UI ---
+        function initDaySelector() {
+            const container = document.getElementById('day-selector-geral');
+            const labels = {seg:'S', ter:'T', qua:'Q', qui:'Q', sex:'S', sab:'S', dom:'D'};
+            container.innerHTML = '';
+            Object.keys(weeklyPlan).forEach(id => {
+                const btn = document.createElement('button');
+                btn.className = "min-w-[45px] h-12 rounded-xl bg-white border border-slate-200 font-black text-xs text-slate-400 transition-all";
+                btn.innerText = labels[id];
+                btn.id = `day-btn-${id}`;
+                btn.onclick = () => { currentDay = id; updateUI(); };
+                container.appendChild(btn);
+            });
+        }
+
+        function updateUI() {
+            // Seletor
+            document.querySelectorAll('#day-selector-geral button').forEach(b => b.classList.remove('card-active-day', 'border-blue-600'));
+            const activeBtn = document.getElementById(`day-btn-${currentDay}`);
+            if(activeBtn) activeBtn.classList.add('card-active-day');
+
+            renderTimeline();
+            renderStudyTopics();
+            updateProgressBar();
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('timeline-geral');
+            if(!container) return;
+            container.innerHTML = '';
+            const tasks = getTasksForDay(currentDay);
+            
+            tasks.forEach((item, idx) => {
+                const id = `task-${currentDay}-${idx}`;
+                const isDone = progress[id];
+                container.innerHTML += `
+                    <div onclick="toggleTask('${id}')" class="bg-white p-4 rounded-2xl flex items-center gap-4 border border-slate-100 shadow-sm transition-all cursor-pointer ${isDone ? 'task-done' : ''}">
+                        <div class="checkbox-custom ${isDone ? 'checked' : ''}"></div>
+                        <div class="flex-1">
+                            <h4 class="font-extrabold text-slate-800 text-[11px] uppercase">${item.task}</h4>
+                            <span class="text-[8px] font-black text-blue-500 tracking-widest">${item.cat} • ${item.t}</span>
+                        </div>
+                        <div class="text-lg">${item.icon}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderStudyTopics() {
+            const container = document.getElementById('study-topics');
+            if(!container) return;
+            const plan = weeklyPlan[currentDay];
+            
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl">${plan.main.icon}</div>
+                        <div>
+                            <h3 class="font-black text-slate-900 uppercase tracking-tight">${plan.main.name}</h3>
+                            <p class="text-[9px] font-bold text-blue-600 uppercase">Foco Principal</p>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b pb-2">Assuntos do Dia:</p>
+                        ${plan.topics.map(t => `
+                            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <span class="text-xs font-bold text-slate-700">${t}</span>
+                                <div class="w-4 h-4 rounded bg-white border border-slate-200"></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleTask(id) {
+            progress[id] = !progress[id];
+            localStorage.setItem('pmal_v4_progress', JSON.stringify(progress));
+            updateUI();
+        }
+
+        function resetProgress() {
+            const tasks = getTasksForDay(currentDay);
+            tasks.forEach((_, i) => delete progress[`task-${currentDay}-${i}`]);
+            localStorage.setItem('pmal_v4_progress', JSON.stringify(progress));
+            updateUI();
+        }
+
+        function updateProgressBar() {
+            const tasks = getTasksForDay(currentDay);
+            const doneCount = tasks.filter((_, i) => progress[`task-${currentDay}-${i}`]).length;
+            const pct = Math.round((doneCount / tasks.length) * 100) || 0;
+            const pctEl = document.getElementById('gen-pct');
+            const barEl = document.getElementById('gen-bar');
+            if(pctEl) pctEl.innerText = `${pct}%`;
+            if(barEl) barEl.style.width = `${pct}%`;
+        }
+
+        // --- GRÁFICOS ---
+        function initTimeChart() {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            if(window.chart1) window.chart1.destroy();
+            window.chart1 = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sono', 'Estudo', 'Trabalho/Escola', 'Treino', 'Livre'],
+                    datasets: [{
+                        data: [42, 25, 40, 15, 46],
+                        backgroundColor: ['#1e293b', '#2563eb', '#f59e0b', '#10b981', '#cbd5e1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+            });
+        }
+
+        function initPriorityChart() {
+            const ctx = document.getElementById('priorityChart').getContext('2d');
+            if(window.chart2) window.chart2.destroy();
+            window.chart2 = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Português', 'Legislação', 'Redação', 'Matemática'],
+                    datasets: [{
+                        data: [10, 9, 8, 5],
+                        backgroundColor: ['#2563eb', '#10b981', '#f43f5e', '#f59e0b'],
+                        borderRadius: 6
+                    }]
+                },
+                options: { 
+                    indexAxis: 'y',
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 9 } } } }
+                }
+            });
+        }
+
+        window.onload = () => {
+            initDaySelector();
+            showTab('geral');
+        };
+    </script>
+</body>
+</html>
